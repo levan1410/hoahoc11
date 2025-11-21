@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mindmap: Tính Oxi Hóa H2SO4 (Chuyên Sâu)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Patrick+Hand&display=swap" rel="stylesheet">
+    
+    <!-- Cấu hình MathJax -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #fff1f2;
+            background-image: radial-gradient(#fecdd3 1px, transparent 1px);
+            background-size: 20px 20px;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* --- CONTROLS --- */
+        .controls {
+            position: fixed; bottom: 20px; right: 20px;
+            background: white; padding: 10px; border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 100; display: flex; gap: 8px;
+        }
+        
+        .btn {
+            width: 40px; height: 40px;
+            border: 1px solid #e2e8f0; background: white; border-radius: 6px;
+            cursor: pointer; font-weight: bold; color: #475569;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; transition: all 0.2s;
+        }
+        .btn:hover { background: #f1f5f9; transform: translateY(-2px); }
+
+        .instructions {
+            position: fixed; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.95);
+            padding: 10px 16px; border-radius: 8px;
+            font-size: 0.9rem; color: #be123c;
+            pointer-events: none; backdrop-filter: blur(4px);
+            z-index: 100; border: 1px solid #fda4af;
+            box-shadow: 0 2px 8px rgba(225, 29, 72, 0.1);
+        }
+
+        /* --- VIEWPORT --- */
+        #viewport { width: 100%; height: 100%; cursor: grab; display: flex; align-items: center; justify-content: center; }
+        #viewport.grabbing { cursor: grabbing; }
+        #mindmap-content { transform-origin: 50% 50%; transition: transform 0.1s ease-out; }
+
+        /* --- MINDMAP NODES --- */
+        .mindmap-container { display: flex; align-items: center; padding: 100px; }
+        .node { margin: 10px; position: relative; }
+
+        .content {
+            background: white; padding: 12px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border: 2px solid #e2e8f0;
+            min-width: 180px; max-width: 280px;
+            text-align: center; transition: all 0.2s;
+            z-index: 2; position: relative; cursor: pointer;
+        }
+        .content:hover { transform: scale(1.05) translateY(-2px); box-shadow: 0 10px 20px rgba(225, 29, 72, 0.2); border-color: #f43f5e; }
+        .content::after { content: '👆'; font-size: 0.8rem; position: absolute; top: -8px; right: -8px; opacity: 0; transition: opacity 0.2s; background: white; border-radius: 50%; padding: 2px; }
+        .content:hover::after { opacity: 1; }
+
+        /* Connectors */
+        .root-connector { width: 60px; height: 4px; background: #9f1239; }
+        
+        .spine {
+            display: flex; flex-direction: column; gap: 50px;
+            border-left: 4px solid #9f1239;
+            padding: 30px 0;
+        }
+
+        .branch { display: flex; align-items: center; position: relative; padding-left: 60px; }
+        .branch::before { content: ''; position: absolute; left: 0; top: 50%; width: 60px; height: 4px; background: #9f1239; }
+
+        .sub-branches {
+            margin-left: 40px; padding-left: 30px;
+            border-left: 2px dashed #fda4af;
+            display: flex; flex-direction: column; gap: 20px;
+        }
+        
+        .sub-node { position: relative; display: flex; align-items: center; }
+        .sub-node::before { content: ''; position: absolute; left: -30px; top: 50%; width: 30px; height: 2px; border-top: 2px dashed #fda4af; }
+
+        h3 { font-size: 1rem; margin-bottom: 4px; color: #881337; font-weight: 700; }
+        p { font-size: 0.85rem; color: #64748b; }
+        
+        /* Root Node */
+        .root .content {
+            background: linear-gradient(135deg, #be123c, #9f1239);
+            color: white; border: none;
+            padding: 25px 40px; max-width: 320px;
+            box-shadow: 0 10px 25px rgba(190, 18, 60, 0.4);
+        }
+        .root h3 { color: white; font-size: 1.8rem; text-transform: uppercase; }
+        .root p { color: #fecdd3; }
+
+        /* Branch Colors */
+        .br-ban-chat .content { border-left: 6px solid #f43f5e; }
+        .br-phi-kim .content { border-left: 6px solid #d946ef; }
+        .br-hop-chat .content { border-left: 6px solid #8b5cf6; }
+        .br-ket-luan .content { border-left: 6px solid #0ea5e9; }
+
+        .br-ban-chat h3 { color: #e11d48; }
+        .br-phi-kim h3 { color: #c026d3; }
+        .br-hop-chat h3 { color: #7c3aed; }
+        .br-ket-luan h3 { color: #0284c7; }
+
+        /* --- MODAL --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+            backdrop-filter: blur(2px);
+        }
+        .modal-overlay.active { opacity: 1; pointer-events: all; }
+
+        .modal {
+            background: white; width: 90%; max-width: 650px; max-height: 85vh;
+            border-radius: 16px; padding: 0;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            transform: translateY(20px); transition: transform 0.3s;
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+        .modal-overlay.active .modal { transform: translateY(0); }
+
+        .modal-header {
+            padding: 20px 24px; border-bottom: 1px solid #f1f5f9;
+            display: flex; justify-content: space-between; align-items: center;
+            background: #fff1f2;
+        }
+        .modal-title { font-size: 1.4rem; font-weight: bold; color: #9f1239; }
+        .modal-close { background: none; border: none; font-size: 2rem; color: #fda4af; cursor: pointer; line-height: 1; }
+        .modal-close:hover { color: #e11d48; }
+
+        .modal-body { padding: 24px; overflow-y: auto; font-size: 1rem; line-height: 1.6; color: #334155; }
+
+        .equation {
+            background: #f8fafc; padding: 15px; border-radius: 8px;
+            margin: 15px 0; font-family: 'Courier New', monospace;
+            border-left: 4px solid #e11d48; overflow-x: auto;
+            font-weight: bold; color: #334155;
+            font-size: 1.1rem;
+        }
+        .equation-note { font-size: 0.9rem; color: #64748b; margin-top: 5px; font-style: italic; }
+
+        .highlight-box {
+            background: #fff1f2; border: 1px solid #fecdd3;
+            color: #9f1239; padding: 12px; border-radius: 8px;
+            margin-top: 12px; font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="instructions">
+        👆 <b>Click vào ô</b> để xem nội dung • 🖱️ Kéo thả & Zoom
+    </div>
+
+    <div class="controls">
+        <button class="btn" onclick="zoomOut()">-</button>
+        <button class="btn" onclick="resetView()" title="Reset View">↺</button>
+        <button class="btn" onclick="zoomIn()">+</button>
+    </div>
+
+    <div id="viewport">
+        <div id="mindmap-content">
+            <div class="mindmap-container">
+                
+                <!-- ROOT -->
+                <div class="node root">
+                    <div class="content" onclick="showModal('root')">
+                        <h3>TÍNH OXI HÓA</h3>
+                        <p>Của H₂SO₄ Đặc, Nóng</p>
+                    </div>
+                </div>
+
+                <div class="root-connector"></div>
+
+                <!-- SPINE -->
+                <div class="spine">
+
+                    <!-- Branch 1: BẢN CHẤT -->
+                    <div class="branch br-ban-chat">
+                        <div class="content" onclick="showModal('ban_chat')">
+                            <h3>🧠 Bản Chất & Nguyên Lý</h3>
+                            <p>S⁶⁺ nhận electron</p>
+                        </div>
+                        <div class="sub-branches">
+                            <div class="sub-node">
+                                <div class="content" onclick="showModal('san_pham_khu')">
+                                    <h3>Sản Phẩm Khử</h3>
+                                    <p>SO₂, S, H₂S</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Branch 2: TÁC DỤNG PHI KIM -->
+                    <div class="branch br-phi-kim">
+                        <div class="content" onclick="showModal('phi_kim_tong_quat')">
+                            <h3>🔥 Tác Dụng Phi Kim</h3>
+                            <p>C, S, P...</p>
+                        </div>
+                        <div class="sub-branches">
+                            <div class="sub-node">
+                                <div class="content" onclick="showModal('carbon')">
+                                    <h3>Với Carbon (C)</h3>
+                                    <p>Tạo CO₂ + SO₂</p>
+                                </div>
+                            </div>
+                            <div class="sub-node">
+                                <div class="content" onclick="showModal('luu_huynh')">
+                                    <h3>Với Lưu Huỳnh (S)</h3>
+                                    <p>Ra duy nhất SO₂</p>
+                                </div>
+                            </div>
+                            <div class="sub-node">
+                                <div class="content" onclick="showModal('photpho')">
+                                    <h3>Với Phosphor (P)</h3>
+                                    <p>Tạo H₃PO₄</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Branch 3: TÁC DỤNG HỢP CHẤT -->
+                    <div class="branch br-hop-chat">
+                        <div class="content" onclick="showModal('hop_chat_tong_quat')">
+                            <h3>⚗️ Tác Dụng Hợp Chất</h3>
+                            <p>Chất khử mạnh</p>
+                        </div>
+                        <div class="sub-branches">
+                            <div class="sub-node">
+                                <div class="content" onclick="showModal('kim_loai')">
+                                    <h3>Với Kim Loại</h3>
+                                    <p>Fe → Fe³⁺</p>
+                                </div>
+                            </div>
+                            <div class="sub-node">
+                                <div class="content" onclick="showModal('halogen')">
+                                    <h3>Với Halogenua</h3>
+                                    <p>NaBr → Br₂</p>
+                                </div>
+                            </div>
+                            <div class="sub-node">
+                                <div class="content" onclick="showModal('muoi_khu')">
+                                    <h3>Với Muối Khử</h3>
+                                    <p>Na₂SO₃ → Na₂SO₄</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Branch 4: KẾT LUẬN -->
+                    <div class="branch br-ket-luan">
+                        <div class="content" onclick="showModal('nhan_biet')">
+                            <h3>📝 Kết Luận & Nhận Biết</h3>
+                            <p>Dấu hiệu SO₂</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL -->
+    <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitle">Title</div>
+                <button class="modal-close" onclick="closeModalBtn()">×</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                Content goes here...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA WITH FIXED LATEX DELIMITERS ---
+        const data = {
+            'root': {
+                title: 'Tính Oxi Hóa Của H₂SO₄ Đặc Nóng',
+                body: `
+                    <p>H₂SO₄ đặc, nóng vừa là axit mạnh, vừa là <b>chất oxi hóa mạnh</b>.</p>
+                    <div class="highlight-box">
+                        Nguyên tắc chung: Chất có tính oxi hóa là chất <b>nhận electron</b> (bị khử).
+                    </div>
+                `
+            },
+            'ban_chat': {
+                title: 'Bản Chất & Nguyên Lý',
+                body: `
+                    <p>Trong gốc sunfat ($SO_4^{2-}$), nguyên tử Lưu huỳnh ($S$) có số oxi hóa cao nhất là <b>+6</b>.</p>
+                    <p>Do đó, nó có xu hướng mạnh mẽ để <b>nhận electron</b> từ các chất khác để giảm xuống các mức oxi hóa thấp hơn.</p>
+                    <div class="equation">$$S^{+6} + ne \\rightarrow S_{sp\\_khu}$$</div>
+                `
+            },
+            'san_pham_khu': {
+                title: 'Các Sản Phẩm Khử Của S+6',
+                body: `
+                    <p>Tùy thuộc vào độ mạnh của chất khử phản ứng cùng, $S^{+6}$ có thể bị khử xuống:</p>
+                    <ul>
+                        <li><b>$S^{+4}$ ($SO_2$):</b> Khí mùi hắc (Sản phẩm phổ biến nhất).</li>
+                        <li><b>$S^0$ (S):</b> Chất rắn màu vàng (Gặp chất khử mạnh như Mg, Zn).</li>
+                        <li><b>$S^{-2}$ ($H_2S$):</b> Khí mùi trứng thối (Gặp chất khử rất mạnh).</li>
+                    </ul>
+                `
+            },
+            'phi_kim_tong_quat': {
+                title: 'Tác Dụng Với Phi Kim',
+                body: `
+                    <p>H₂SO₄ đặc nóng oxi hóa được nhiều phi kim (C, S, P...) lên mức oxi hóa cao nhất của chúng (thường là Oxit hoặc Axit tương ứng).</p>
+                    <p>Bản thân H₂SO₄ thường bị khử về $SO_2$.</p>
+                `
+            },
+            'carbon': {
+                title: 'Phản Ứng Với Carbon (C)',
+                body: `
+                    <p>Carbon bị oxi hóa từ 0 lên +4 ($CO_2$).</p>
+                    <div class="equation">$$C + 2H_2SO_4 \\text{ (đặc)} \\rightarrow CO_2 + 2SO_2 + 2H_2O$$</div>
+                    <p class="equation-note">Hiện tượng: Sủi bọt khí mạnh (hỗn hợp khí thoát ra).</p>
+                `
+            },
+            'luu_huynh': {
+                title: 'Phản Ứng Với Lưu Huỳnh (S)',
+                body: `
+                    <p>Lưu huỳnh bị oxi hóa từ 0 lên +4 ($SO_2$). Axit cũng bị khử về +4.</p>
+                    <div class="equation">$$S + 2H_2SO_4 \\text{ (đặc)} \\rightarrow 3SO_2 + 2H_2O$$</div>
+                    <div class="highlight-box">Phản ứng này tạo ra duy nhất một loại khí là $SO_2$.</div>
+                `
+            },
+            'photpho': {
+                title: 'Phản Ứng Với Phosphor (P)',
+                body: `
+                    <p>Phosphor bị oxi hóa từ 0 lên +5 (trong axit photphoric $H_3PO_4$).</p>
+                    <div class="equation">$$2P + 5H_2SO_4 \\text{ (đặc)} \\rightarrow 2H_3PO_4 + 5SO_2 + 2H_2O$$</div>
+                `
+            },
+            'hop_chat_tong_quat': {
+                title: 'Tác Dụng Với Hợp Chất',
+                body: `
+                    <p>H₂SO₄ đặc oxi hóa các hợp chất có tính khử (nguyên tố chưa đạt hóa trị cao nhất) lên mức cao nhất.</p>
+                `
+            },
+            'kim_loai': {
+                title: 'Tác Dụng Với Kim Loại (Trừ Au, Pt)',
+                body: `
+                    <p>Oxi hóa kim loại lên hóa trị cao nhất (ví dụ Fe lên Fe³⁺).</p>
+                    <div class="equation">$$2Fe + 6H_2SO_4 \\text{ (đặc)} \\rightarrow Fe_2(SO_4)_3 + 3SO_2 + 6H_2O$$</div>
+                    <div class="highlight-box">Khác với axit loãng chỉ đưa Fe lên Fe²⁺ và giải phóng $H_2$.</div>
+                `
+            },
+            'halogen': {
+                title: 'Tác Dụng Với Hợp Chất Halogen',
+                body: `
+                    <p>Có thể oxi hóa ion Halogenua ($Br^-$, $I^-$) thành đơn chất.</p>
+                    <p>Ví dụ với NaBr:</p>
+                    <div class="equation">$$2NaBr + 2H_2SO_4 \\text{ (đặc)} \\rightarrow Na_2SO_4 + Br_2 + SO_2 + 2H_2O$$</div>
+                    <p class="equation-note">Đây là lý do không dùng H₂SO₄ đặc để điều chế khí HBr hay HI.</p>
+                `
+            },
+            'muoi_khu': {
+                title: 'Tác Dụng Với Muối Có Tính Khử',
+                body: `
+                    <p>Ví dụ với muối Sunfit ($SO_3^{2-}$ chứa S⁺⁴):</p>
+                    <div class="equation">$$Na_2SO_3 + H_2SO_4 \\rightarrow Na_2SO_4 + SO_2 + H_2O$$</div>
+                    <p>Trong phản ứng này $S^{+4}$ trong muối đóng vai trò chất khử (nếu xét theo khía cạnh axit mạnh đẩy axit yếu thì nó giải phóng SO₂).</p>
+                `
+            },
+            'nhan_biet': {
+                title: 'Kết Luận & Nhận Biết',
+                body: `
+                    <p><b>Đặc trưng nhận biết phản ứng oxi hóa của H₂SO₄ đặc:</b></p>
+                    <ul>
+                        <li>Sinh ra khí <b>$SO_2$</b> có mùi hắc.</li>
+                        <li>Khí này làm mất màu dung dịch <b>Brom ($Br_2$)</b> hoặc <b>Thuốc tím ($KMnO_4$)</b>.</li>
+                    </ul>
+                `
+            }
+        };
+
+        function showModal(key) {
+            const content = data[key];
+            if(content) {
+                document.getElementById('modalTitle').innerText = content.title;
+                document.getElementById('modalBody').innerHTML = content.body;
+                document.getElementById('modalOverlay').classList.add('active');
+                // Rerender MathJax for new content
+                if(window.MathJax) {
+                    MathJax.typesetPromise([document.getElementById('modalBody')]);
+                }
+            }
+        }
+
+        function closeModal(e) {
+            if(e.target.id === 'modalOverlay') document.getElementById('modalOverlay').classList.remove('active');
+        }
+        function closeModalBtn() { document.getElementById('modalOverlay').classList.remove('active'); }
+
+        const viewport = document.getElementById('viewport');
+        const contentEl = document.getElementById('mindmap-content');
+        let scale = 1, pointX = 0, pointY = 0, isPanning = false, startX = 0, startY = 0;
+
+        function zoomIn() { scale *= 1.2; updateTransform(); }
+        function zoomOut() { scale /= 1.2; updateTransform(); }
+
+        viewport.addEventListener('mousedown', (e) => { isPanning = true; startX = e.clientX - pointX; startY = e.clientY - pointY; viewport.classList.add('grabbing'); });
+        window.addEventListener('mousemove', (e) => { if (!isPanning) return; e.preventDefault(); pointX = e.clientX - startX; pointY = e.clientY - startY; updateTransform(); });
+        window.addEventListener('mouseup', () => { isPanning = false; viewport.classList.remove('grabbing'); });
+        viewport.addEventListener('wheel', (e) => { e.preventDefault(); const delta = -e.deltaY; (delta > 0) ? (scale *= 1.1) : (scale /= 1.1); scale = Math.min(Math.max(0.1, scale), 5); updateTransform(); }, { passive: false });
+
+        function updateTransform() { contentEl.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`; }
+        function resetView() { scale = 1; pointX = 0; pointY = 0; updateTransform(); }
+        window.onload = function() { scale = 0.9; updateTransform(); }
+    </script>
+</body>
+</html>
