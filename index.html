@@ -2,442 +2,466 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mindmap: Tính Oxi Hóa H2SO4 (Chuyên Sâu)</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Patrick+Hand&display=swap" rel="stylesheet">
-    
-    <!-- Cấu hình MathJax -->
-    <script>
-        window.MathJax = {
-            tex: {
-                inlineMath: [['$', '$'], ['\\(', '\\)']],
-                displayMath: [['$$', '$$'], ['\\[', '\\]']]
-            },
-            svg: {
-                fontCache: 'global'
-            }
-        };
-    </script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bảng Viết PDF Online</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome cho icon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        
         body {
-            font-family: 'Roboto', sans-serif;
-            background-color: #fff1f2;
-            background-image: radial-gradient(#fecdd3 1px, transparent 1px);
-            background-size: 20px 20px;
-            height: 100vh;
-            width: 100vw;
+            overscroll-behavior: none; /* Ngăn chặn pull-to-refresh trên mobile */
+            touch-action: none; /* Tối ưu cho vẽ cảm ứng */
+        }
+        #canvas-container {
+            position: relative;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            margin: 0 auto;
+            border: 1px solid #e5e7eb;
+            background-color: #525659; /* Màu nền giống trình đọc PDF */
             overflow: hidden;
-            user-select: none;
         }
-
-        /* --- CONTROLS --- */
-        .controls {
-            position: fixed; bottom: 20px; right: 20px;
-            background: white; padding: 10px; border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            z-index: 100; display: flex; gap: 8px;
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: block;
         }
-        
-        .btn {
-            width: 40px; height: 40px;
-            border: 1px solid #e2e8f0; background: white; border-radius: 6px;
-            cursor: pointer; font-weight: bold; color: #475569;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.2rem; transition: all 0.2s;
+        #pdf-render {
+            z-index: 1; /* Lớp PDF ở dưới */
         }
-        .btn:hover { background: #f1f5f9; transform: translateY(-2px); }
-
-        .instructions {
-            position: fixed; top: 20px; left: 20px;
-            background: rgba(255,255,255,0.95);
-            padding: 10px 16px; border-radius: 8px;
-            font-size: 0.9rem; color: #be123c;
-            pointer-events: none; backdrop-filter: blur(4px);
-            z-index: 100; border: 1px solid #fda4af;
-            box-shadow: 0 2px 8px rgba(225, 29, 72, 0.1);
+        #draw-layer {
+            z-index: 2; /* Lớp vẽ ở trên */
+            cursor: crosshair;
+            touch-action: none;
         }
-
-        /* --- VIEWPORT --- */
-        #viewport { width: 100%; height: 100%; cursor: grab; display: flex; align-items: center; justify-content: center; }
-        #viewport.grabbing { cursor: grabbing; }
-        #mindmap-content { transform-origin: 50% 50%; transition: transform 0.1s ease-out; }
-
-        /* --- MINDMAP NODES --- */
-        .mindmap-container { display: flex; align-items: center; padding: 100px; }
-        .node { margin: 10px; position: relative; }
-
-        .content {
-            background: white; padding: 12px 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            border: 2px solid #e2e8f0;
-            min-width: 180px; max-width: 280px;
-            text-align: center; transition: all 0.2s;
-            z-index: 2; position: relative; cursor: pointer;
+        .tool-btn.active {
+            background-color: #dbeafe; /* bg-blue-100 */
+            color: #1d4ed8; /* text-blue-700 */
+            border-color: #3b82f6;
         }
-        .content:hover { transform: scale(1.05) translateY(-2px); box-shadow: 0 10px 20px rgba(225, 29, 72, 0.2); border-color: #f43f5e; }
-        .content::after { content: '👆'; font-size: 0.8rem; position: absolute; top: -8px; right: -8px; opacity: 0; transition: opacity 0.2s; background: white; border-radius: 50%; padding: 2px; }
-        .content:hover::after { opacity: 1; }
-
-        /* Connectors */
-        .root-connector { width: 60px; height: 4px; background: #9f1239; }
-        
-        .spine {
-            display: flex; flex-direction: column; gap: 50px;
-            border-left: 4px solid #9f1239;
-            padding: 30px 0;
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
         }
-
-        .branch { display: flex; align-items: center; position: relative; padding-left: 60px; }
-        .branch::before { content: ''; position: absolute; left: 0; top: 50%; width: 60px; height: 4px; background: #9f1239; }
-
-        .sub-branches {
-            margin-left: 40px; padding-left: 30px;
-            border-left: 2px dashed #fda4af;
-            display: flex; flex-direction: column; gap: 20px;
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
         }
-        
-        .sub-node { position: relative; display: flex; align-items: center; }
-        .sub-node::before { content: ''; position: absolute; left: -30px; top: 50%; width: 30px; height: 2px; border-top: 2px dashed #fda4af; }
-
-        h3 { font-size: 1rem; margin-bottom: 4px; color: #881337; font-weight: 700; }
-        p { font-size: 0.85rem; color: #64748b; }
-        
-        /* Root Node */
-        .root .content {
-            background: linear-gradient(135deg, #be123c, #9f1239);
-            color: white; border: none;
-            padding: 25px 40px; max-width: 320px;
-            box-shadow: 0 10px 25px rgba(190, 18, 60, 0.4);
+        ::-webkit-scrollbar-thumb {
+            background: #888; 
+            border-radius: 4px;
         }
-        .root h3 { color: white; font-size: 1.8rem; text-transform: uppercase; }
-        .root p { color: #fecdd3; }
-
-        /* Branch Colors */
-        .br-ban-chat .content { border-left: 6px solid #f43f5e; }
-        .br-phi-kim .content { border-left: 6px solid #d946ef; }
-        .br-hop-chat .content { border-left: 6px solid #8b5cf6; }
-        .br-ket-luan .content { border-left: 6px solid #0ea5e9; }
-
-        .br-ban-chat h3 { color: #e11d48; }
-        .br-phi-kim h3 { color: #c026d3; }
-        .br-hop-chat h3 { color: #7c3aed; }
-        .br-ket-luan h3 { color: #0284c7; }
-
-        /* --- MODAL --- */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.6);
-            display: flex; justify-content: center; align-items: center;
-            z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s;
-            backdrop-filter: blur(2px);
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555; 
         }
-        .modal-overlay.active { opacity: 1; pointer-events: all; }
-
-        .modal {
-            background: white; width: 90%; max-width: 650px; max-height: 85vh;
-            border-radius: 16px; padding: 0;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-            transform: translateY(20px); transition: transform 0.3s;
-            display: flex; flex-direction: column; overflow: hidden;
+        /* Drag and Drop overlay */
+        #drop-zone {
+            display: none;
+            background-color: rgba(37, 99, 235, 0.9);
         }
-        .modal-overlay.active .modal { transform: translateY(0); }
-
-        .modal-header {
-            padding: 20px 24px; border-bottom: 1px solid #f1f5f9;
-            display: flex; justify-content: space-between; align-items: center;
-            background: #fff1f2;
-        }
-        .modal-title { font-size: 1.4rem; font-weight: bold; color: #9f1239; }
-        .modal-close { background: none; border: none; font-size: 2rem; color: #fda4af; cursor: pointer; line-height: 1; }
-        .modal-close:hover { color: #e11d48; }
-
-        .modal-body { padding: 24px; overflow-y: auto; font-size: 1rem; line-height: 1.6; color: #334155; }
-
-        .equation {
-            background: #f8fafc; padding: 15px; border-radius: 8px;
-            margin: 15px 0; font-family: 'Courier New', monospace;
-            border-left: 4px solid #e11d48; overflow-x: auto;
-            font-weight: bold; color: #334155;
-            font-size: 1.1rem;
-        }
-        .equation-note { font-size: 0.9rem; color: #64748b; margin-top: 5px; font-style: italic; }
-
-        .highlight-box {
-            background: #fff1f2; border: 1px solid #fecdd3;
-            color: #9f1239; padding: 12px; border-radius: 8px;
-            margin-top: 12px; font-weight: 500;
+        #drop-zone.dragover {
+            display: flex;
         }
     </style>
 </head>
-<body>
+<body class="bg-gray-100 h-screen flex flex-col font-sans relative">
 
-    <div class="instructions">
-        👆 <b>Click vào ô</b> để xem nội dung • 🖱️ Kéo thả & Zoom
+    <!-- Drag & Drop Overlay -->
+    <div id="drop-zone" class="absolute inset-0 z-50 flex flex-col items-center justify-center text-white transition-opacity duration-200">
+        <i class="fa-solid fa-cloud-arrow-up text-6xl mb-4"></i>
+        <h2 class="text-3xl font-bold">Thả file PDF vào đây</h2>
     </div>
 
-    <div class="controls">
-        <button class="btn" onclick="zoomOut()">-</button>
-        <button class="btn" onclick="resetView()" title="Reset View">↺</button>
-        <button class="btn" onclick="zoomIn()">+</button>
-    </div>
+    <!-- Header / Toolbar -->
+    <header class="bg-white border-b border-gray-200 p-2 shadow-sm flex flex-wrap items-center justify-between gap-2 z-10 shrink-0">
+        <!-- Khu vực file và điều hướng -->
+        <div class="flex items-center gap-2">
+            <div class="flex gap-1">
+                <label class="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 cursor-pointer transition text-sm" title="Mở file từ máy">
+                    <i class="fa-solid fa-folder-open"></i>
+                    <span class="hidden sm:inline">Mở File</span>
+                    <input type="file" id="file-upload" accept="application/pdf" class="hidden" />
+                </label>
+                <button id="btn-url" class="flex items-center gap-2 px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 cursor-pointer transition text-sm" title="Nhập Link PDF/Drive">
+                    <i class="fa-solid fa-link"></i>
+                    <span class="hidden sm:inline">URL</span>
+                </button>
+            </div>
 
-    <div id="viewport">
-        <div id="mindmap-content">
-            <div class="mindmap-container">
-                
-                <!-- ROOT -->
-                <div class="node root">
-                    <div class="content" onclick="showModal('root')">
-                        <h3>TÍNH OXI HÓA</h3>
-                        <p>Của H₂SO₄ Đặc, Nóng</p>
-                    </div>
-                </div>
-
-                <div class="root-connector"></div>
-
-                <!-- SPINE -->
-                <div class="spine">
-
-                    <!-- Branch 1: BẢN CHẤT -->
-                    <div class="branch br-ban-chat">
-                        <div class="content" onclick="showModal('ban_chat')">
-                            <h3>🧠 Bản Chất & Nguyên Lý</h3>
-                            <p>S⁶⁺ nhận electron</p>
-                        </div>
-                        <div class="sub-branches">
-                            <div class="sub-node">
-                                <div class="content" onclick="showModal('san_pham_khu')">
-                                    <h3>Sản Phẩm Khử</h3>
-                                    <p>SO₂, S, H₂S</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Branch 2: TÁC DỤNG PHI KIM -->
-                    <div class="branch br-phi-kim">
-                        <div class="content" onclick="showModal('phi_kim_tong_quat')">
-                            <h3>🔥 Tác Dụng Phi Kim</h3>
-                            <p>C, S, P...</p>
-                        </div>
-                        <div class="sub-branches">
-                            <div class="sub-node">
-                                <div class="content" onclick="showModal('carbon')">
-                                    <h3>Với Carbon (C)</h3>
-                                    <p>Tạo CO₂ + SO₂</p>
-                                </div>
-                            </div>
-                            <div class="sub-node">
-                                <div class="content" onclick="showModal('luu_huynh')">
-                                    <h3>Với Lưu Huỳnh (S)</h3>
-                                    <p>Ra duy nhất SO₂</p>
-                                </div>
-                            </div>
-                            <div class="sub-node">
-                                <div class="content" onclick="showModal('photpho')">
-                                    <h3>Với Phosphor (P)</h3>
-                                    <p>Tạo H₃PO₄</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Branch 3: TÁC DỤNG HỢP CHẤT -->
-                    <div class="branch br-hop-chat">
-                        <div class="content" onclick="showModal('hop_chat_tong_quat')">
-                            <h3>⚗️ Tác Dụng Hợp Chất</h3>
-                            <p>Chất khử mạnh</p>
-                        </div>
-                        <div class="sub-branches">
-                            <div class="sub-node">
-                                <div class="content" onclick="showModal('kim_loai')">
-                                    <h3>Với Kim Loại</h3>
-                                    <p>Fe → Fe³⁺</p>
-                                </div>
-                            </div>
-                            <div class="sub-node">
-                                <div class="content" onclick="showModal('halogen')">
-                                    <h3>Với Halogenua</h3>
-                                    <p>NaBr → Br₂</p>
-                                </div>
-                            </div>
-                            <div class="sub-node">
-                                <div class="content" onclick="showModal('muoi_khu')">
-                                    <h3>Với Muối Khử</h3>
-                                    <p>Na₂SO₃ → Na₂SO₄</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Branch 4: KẾT LUẬN -->
-                    <div class="branch br-ket-luan">
-                        <div class="content" onclick="showModal('nhan_biet')">
-                            <h3>📝 Kết Luận & Nhận Biết</h3>
-                            <p>Dấu hiệu SO₂</p>
-                        </div>
-                    </div>
-
-                </div>
+            <div class="flex items-center bg-gray-100 rounded p-1">
+                <button id="prev-page" class="p-2 hover:bg-gray-200 rounded disabled:opacity-50" title="Trang trước">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <span class="mx-2 text-sm font-medium">
+                    <span id="page-num">0</span> / <span id="page-count">0</span>
+                </span>
+                <button id="next-page" class="p-2 hover:bg-gray-200 rounded disabled:opacity-50" title="Trang sau">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </div>
+            
+            <div class="flex items-center gap-1 ml-2">
+                <button id="zoom-out" class="p-2 hover:bg-gray-200 rounded" title="Thu nhỏ">
+                    <i class="fa-solid fa-minus"></i>
+                </button>
+                <span id="zoom-level" class="text-sm w-12 text-center">100%</span>
+                <button id="zoom-in" class="p-2 hover:bg-gray-200 rounded" title="Phóng to">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
             </div>
         </div>
-    </div>
 
-    <!-- MODAL -->
-    <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
-        <div class="modal">
-            <div class="modal-header">
-                <div class="modal-title" id="modalTitle">Title</div>
-                <button class="modal-close" onclick="closeModalBtn()">×</button>
+        <!-- Công cụ vẽ -->
+        <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+            <div class="flex bg-gray-100 rounded p-1 gap-1">
+                <button id="tool-pen" class="tool-btn active p-2 rounded border border-transparent hover:bg-white transition" title="Bút vẽ">
+                    <i class="fa-solid fa-pen"></i>
+                </button>
+                <button id="tool-eraser" class="tool-btn p-2 rounded border border-transparent hover:bg-white transition" title="Tẩy">
+                    <i class="fa-solid fa-eraser"></i>
+                </button>
+                <button id="btn-clear" class="p-2 rounded border border-transparent hover:bg-red-100 text-red-600 transition" title="Xóa hết trang này">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
             </div>
-            <div class="modal-body" id="modalBody">
-                Content goes here...
+
+            <div class="flex items-center gap-2 border-l pl-2 border-gray-300">
+                <input type="color" id="color-picker" value="#000000" class="w-8 h-8 rounded cursor-pointer border-0 bg-transparent p-0" title="Màu bút">
+                <div class="flex flex-col w-24">
+                    <label class="text-[10px] text-gray-500">Kích thước</label>
+                    <input type="range" id="pen-size" min="1" max="20" value="2" class="h-1 bg-gray-300 rounded-lg appearance-none cursor-pointer">
+                </div>
+            </div>
+
+            <div class="border-l pl-2 border-gray-300">
+                <button id="btn-download" class="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm transition" title="Lưu trang hiện tại thành ảnh">
+                    <i class="fa-solid fa-download"></i>
+                    <span class="hidden md:inline">Lưu Ảnh</span>
+                </button>
             </div>
         </div>
-    </div>
+    </header>
+
+    <!-- Main Canvas Area -->
+    <main class="flex-1 overflow-auto bg-gray-200 flex justify-center p-4" id="main-scroll">
+        <div id="canvas-container" class="relative bg-white shadow-lg">
+            <canvas id="pdf-render"></canvas>
+            <canvas id="draw-layer"></canvas>
+        </div>
+        
+        <!-- Empty State -->
+        <div id="empty-state" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center text-gray-500">
+            <i class="fa-solid fa-file-pdf text-6xl mb-4 text-gray-300"></i>
+            <p class="text-xl font-medium">Kéo thả file PDF vào đây</p>
+            <p class="text-sm mt-2">hoặc chọn từ nút "Mở File" / "URL"</p>
+        </div>
+    </main>
 
     <script>
-        // --- DATA WITH FIXED LATEX DELIMITERS ---
-        const data = {
-            'root': {
-                title: 'Tính Oxi Hóa Của H₂SO₄ Đặc Nóng',
-                body: `
-                    <p>H₂SO₄ đặc, nóng vừa là axit mạnh, vừa là <b>chất oxi hóa mạnh</b>.</p>
-                    <div class="highlight-box">
-                        Nguyên tắc chung: Chất có tính oxi hóa là chất <b>nhận electron</b> (bị khử).
-                    </div>
-                `
-            },
-            'ban_chat': {
-                title: 'Bản Chất & Nguyên Lý',
-                body: `
-                    <p>Trong gốc sunfat ($SO_4^{2-}$), nguyên tử Lưu huỳnh ($S$) có số oxi hóa cao nhất là <b>+6</b>.</p>
-                    <p>Do đó, nó có xu hướng mạnh mẽ để <b>nhận electron</b> từ các chất khác để giảm xuống các mức oxi hóa thấp hơn.</p>
-                    <div class="equation">$$S^{+6} + ne \\rightarrow S_{sp\\_khu}$$</div>
-                `
-            },
-            'san_pham_khu': {
-                title: 'Các Sản Phẩm Khử Của S+6',
-                body: `
-                    <p>Tùy thuộc vào độ mạnh của chất khử phản ứng cùng, $S^{+6}$ có thể bị khử xuống:</p>
-                    <ul>
-                        <li><b>$S^{+4}$ ($SO_2$):</b> Khí mùi hắc (Sản phẩm phổ biến nhất).</li>
-                        <li><b>$S^0$ (S):</b> Chất rắn màu vàng (Gặp chất khử mạnh như Mg, Zn).</li>
-                        <li><b>$S^{-2}$ ($H_2S$):</b> Khí mùi trứng thối (Gặp chất khử rất mạnh).</li>
-                    </ul>
-                `
-            },
-            'phi_kim_tong_quat': {
-                title: 'Tác Dụng Với Phi Kim',
-                body: `
-                    <p>H₂SO₄ đặc nóng oxi hóa được nhiều phi kim (C, S, P...) lên mức oxi hóa cao nhất của chúng (thường là Oxit hoặc Axit tương ứng).</p>
-                    <p>Bản thân H₂SO₄ thường bị khử về $SO_2$.</p>
-                `
-            },
-            'carbon': {
-                title: 'Phản Ứng Với Carbon (C)',
-                body: `
-                    <p>Carbon bị oxi hóa từ 0 lên +4 ($CO_2$).</p>
-                    <div class="equation">$$C + 2H_2SO_4 \\text{ (đặc)} \\rightarrow CO_2 + 2SO_2 + 2H_2O$$</div>
-                    <p class="equation-note">Hiện tượng: Sủi bọt khí mạnh (hỗn hợp khí thoát ra).</p>
-                `
-            },
-            'luu_huynh': {
-                title: 'Phản Ứng Với Lưu Huỳnh (S)',
-                body: `
-                    <p>Lưu huỳnh bị oxi hóa từ 0 lên +4 ($SO_2$). Axit cũng bị khử về +4.</p>
-                    <div class="equation">$$S + 2H_2SO_4 \\text{ (đặc)} \\rightarrow 3SO_2 + 2H_2O$$</div>
-                    <div class="highlight-box">Phản ứng này tạo ra duy nhất một loại khí là $SO_2$.</div>
-                `
-            },
-            'photpho': {
-                title: 'Phản Ứng Với Phosphor (P)',
-                body: `
-                    <p>Phosphor bị oxi hóa từ 0 lên +5 (trong axit photphoric $H_3PO_4$).</p>
-                    <div class="equation">$$2P + 5H_2SO_4 \\text{ (đặc)} \\rightarrow 2H_3PO_4 + 5SO_2 + 2H_2O$$</div>
-                `
-            },
-            'hop_chat_tong_quat': {
-                title: 'Tác Dụng Với Hợp Chất',
-                body: `
-                    <p>H₂SO₄ đặc oxi hóa các hợp chất có tính khử (nguyên tố chưa đạt hóa trị cao nhất) lên mức cao nhất.</p>
-                `
-            },
-            'kim_loai': {
-                title: 'Tác Dụng Với Kim Loại (Trừ Au, Pt)',
-                body: `
-                    <p>Oxi hóa kim loại lên hóa trị cao nhất (ví dụ Fe lên Fe³⁺).</p>
-                    <div class="equation">$$2Fe + 6H_2SO_4 \\text{ (đặc)} \\rightarrow Fe_2(SO_4)_3 + 3SO_2 + 6H_2O$$</div>
-                    <div class="highlight-box">Khác với axit loãng chỉ đưa Fe lên Fe²⁺ và giải phóng $H_2$.</div>
-                `
-            },
-            'halogen': {
-                title: 'Tác Dụng Với Hợp Chất Halogen',
-                body: `
-                    <p>Có thể oxi hóa ion Halogenua ($Br^-$, $I^-$) thành đơn chất.</p>
-                    <p>Ví dụ với NaBr:</p>
-                    <div class="equation">$$2NaBr + 2H_2SO_4 \\text{ (đặc)} \\rightarrow Na_2SO_4 + Br_2 + SO_2 + 2H_2O$$</div>
-                    <p class="equation-note">Đây là lý do không dùng H₂SO₄ đặc để điều chế khí HBr hay HI.</p>
-                `
-            },
-            'muoi_khu': {
-                title: 'Tác Dụng Với Muối Có Tính Khử',
-                body: `
-                    <p>Ví dụ với muối Sunfit ($SO_3^{2-}$ chứa S⁺⁴):</p>
-                    <div class="equation">$$Na_2SO_3 + H_2SO_4 \\rightarrow Na_2SO_4 + SO_2 + H_2O$$</div>
-                    <p>Trong phản ứng này $S^{+4}$ trong muối đóng vai trò chất khử (nếu xét theo khía cạnh axit mạnh đẩy axit yếu thì nó giải phóng SO₂).</p>
-                `
-            },
-            'nhan_biet': {
-                title: 'Kết Luận & Nhận Biết',
-                body: `
-                    <p><b>Đặc trưng nhận biết phản ứng oxi hóa của H₂SO₄ đặc:</b></p>
-                    <ul>
-                        <li>Sinh ra khí <b>$SO_2$</b> có mùi hắc.</li>
-                        <li>Khí này làm mất màu dung dịch <b>Brom ($Br_2$)</b> hoặc <b>Thuốc tím ($KMnO_4$)</b>.</li>
-                    </ul>
-                `
-            }
-        };
+        // --- Cấu hình PDF.js ---
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-        function showModal(key) {
-            const content = data[key];
-            if(content) {
-                document.getElementById('modalTitle').innerText = content.title;
-                document.getElementById('modalBody').innerHTML = content.body;
-                document.getElementById('modalOverlay').classList.add('active');
-                // Rerender MathJax for new content
-                if(window.MathJax) {
-                    MathJax.typesetPromise([document.getElementById('modalBody')]);
+        // --- Biến trạng thái ---
+        let pdfDoc = null;
+        let pageNum = 1;
+        let pageRendering = false;
+        let pageNumPending = null;
+        let scale = 1.0;
+        let canvasContainer = document.getElementById('canvas-container');
+        let pdfCanvas = document.getElementById('pdf-render');
+        let pdfCtx = pdfCanvas.getContext('2d');
+        let drawCanvas = document.getElementById('draw-layer');
+        let drawCtx = drawCanvas.getContext('2d', { willReadFrequently: true });
+
+        // Lưu trữ nét vẽ của từng trang: { 1: "dataURL", 2: "dataURL" }
+        let storedDrawings = {};
+        
+        // Trạng thái vẽ
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        let currentTool = 'pen'; // 'pen' hoặc 'eraser'
+        
+        // --- DOM Elements ---
+        const fileInput = document.getElementById('file-upload');
+        const emptyState = document.getElementById('empty-state');
+        const pageNumSpan = document.getElementById('page-num');
+        const pageCountSpan = document.getElementById('page-count');
+        const zoomLevelSpan = document.getElementById('zoom-level');
+        const colorPicker = document.getElementById('color-picker');
+        const penSizeInput = document.getElementById('pen-size');
+        
+        // --- 1. Xử lý PDF & Input ---
+
+        // Hàm chung để load dữ liệu PDF (ArrayBuffer)
+        function loadPdfData(typedarray) {
+            pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
+                pdfDoc = pdf;
+                pageCountSpan.textContent = pdfDoc.numPages;
+                pageNum = 1;
+                storedDrawings = {}; // Reset nét vẽ
+                emptyState.style.display = 'none';
+                renderPage(pageNum);
+            }).catch(err => {
+                console.error(err);
+                alert("Không thể đọc file PDF này. File có thể bị lỗi hoặc được bảo vệ.");
+            });
+        }
+
+        // Render trang
+        async function renderPage(num) {
+            pageRendering = true;
+            const page = await pdfDoc.getPage(num);
+            const viewport = page.getViewport({ scale: scale });
+            
+            pdfCanvas.height = viewport.height;
+            pdfCanvas.width = viewport.width;
+            drawCanvas.height = viewport.height;
+            drawCanvas.width = viewport.width;
+            
+            canvasContainer.style.width = `${viewport.width}px`;
+            canvasContainer.style.height = `${viewport.height}px`;
+
+            const renderContext = {
+                canvasContext: pdfCtx,
+                viewport: viewport
+            };
+            
+            try {
+                await page.render(renderContext).promise;
+                pageRendering = false;
+                restoreDrawing(num);
+
+                if (pageNumPending !== null) {
+                    renderPage(pageNumPending);
+                    pageNumPending = null;
                 }
+            } catch (error) {
+                console.error("Lỗi render trang:", error);
+                pageRendering = false;
+            }
+
+            pageNumSpan.textContent = num;
+            zoomLevelSpan.textContent = `${Math.round(scale * 100)}%`;
+            
+            document.getElementById('prev-page').disabled = num <= 1;
+            document.getElementById('next-page').disabled = num >= pdfDoc.numPages;
+        }
+
+        function queueRenderPage(num) {
+            saveDrawing(pageNum);
+            if (pageRendering) {
+                pageNumPending = num;
+            } else {
+                renderPage(num);
             }
         }
 
-        function closeModal(e) {
-            if(e.target.id === 'modalOverlay') document.getElementById('modalOverlay').classList.remove('active');
+        function onPrevPage() { if (pageNum <= 1) return; queueRenderPage(--pageNum); }
+        function onNextPage() { if (pageNum >= pdfDoc.numPages) return; queueRenderPage(++pageNum); }
+
+        // --- Xử lý File Input ---
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file && file.type === 'application/pdf') {
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    loadPdfData(new Uint8Array(ev.target.result));
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        });
+
+        // --- Xử lý URL (Đã cập nhật Proxy cho Github Pages) ---
+        document.getElementById('btn-url').addEventListener('click', async () => {
+            let url = prompt("Nhập đường dẫn file PDF (Direct Link) hoặc Google Drive Public Link:");
+            if (!url) return;
+
+            // Xử lý Google Drive Link
+            const driveRegex = /drive\.google\.com\/file\/d\/([-_\w]+)/;
+            const match = url.match(driveRegex);
+            if (match && match[1]) {
+                url = `https://drive.google.com/uc?export=download&id=${match[1]}`;
+            }
+
+            const btn = document.getElementById('btn-url');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading...';
+
+            try {
+                // Thử tải trực tiếp trước
+                let response;
+                try {
+                    response = await fetch(url);
+                    if (!response.ok) throw new Error("Direct fetch failed");
+                } catch (e) {
+                    console.warn("Tải trực tiếp thất bại, đang thử qua Proxy...", e);
+                    // Nếu lỗi (thường do CORS), thử qua proxy
+                    // Sử dụng dịch vụ corsproxy.io miễn phí
+                    const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
+                    response = await fetch(proxyUrl);
+                }
+
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                
+                const arrayBuffer = await response.arrayBuffer();
+                loadPdfData(new Uint8Array(arrayBuffer));
+                
+            } catch (error) {
+                console.error(error);
+                alert("LỖI: Không thể tải file. \nNếu bạn đang dùng link Google Drive, hãy chắc chắn file đã được chia sẻ công khai (Everyone with the link).");
+            } finally {
+                btn.innerHTML = originalText;
+            }
+        });
+
+        // --- Xử lý Drag & Drop ---
+        const dropZone = document.getElementById('drop-zone');
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
         }
-        function closeModalBtn() { document.getElementById('modalOverlay').classList.remove('active'); }
 
-        const viewport = document.getElementById('viewport');
-        const contentEl = document.getElementById('mindmap-content');
-        let scale = 1, pointX = 0, pointY = 0, isPanning = false, startX = 0, startY = 0;
+        document.body.addEventListener('dragenter', () => dropZone.classList.add('dragover'));
+        document.body.addEventListener('dragleave', (e) => {
+            // Chỉ ẩn khi rời khỏi hoàn toàn cửa sổ
+            if (e.clientX === 0 && e.clientY === 0) {
+                dropZone.classList.remove('dragover');
+            }
+        });
+        
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
 
-        function zoomIn() { scale *= 1.2; updateTransform(); }
-        function zoomOut() { scale /= 1.2; updateTransform(); }
+        document.body.addEventListener('drop', (e) => {
+            dropZone.classList.remove('dragover');
+            const dt = e.dataTransfer;
+            const files = dt.files;
 
-        viewport.addEventListener('mousedown', (e) => { isPanning = true; startX = e.clientX - pointX; startY = e.clientY - pointY; viewport.classList.add('grabbing'); });
-        window.addEventListener('mousemove', (e) => { if (!isPanning) return; e.preventDefault(); pointX = e.clientX - startX; pointY = e.clientY - startY; updateTransform(); });
-        window.addEventListener('mouseup', () => { isPanning = false; viewport.classList.remove('grabbing'); });
-        viewport.addEventListener('wheel', (e) => { e.preventDefault(); const delta = -e.deltaY; (delta > 0) ? (scale *= 1.1) : (scale /= 1.1); scale = Math.min(Math.max(0.1, scale), 5); updateTransform(); }, { passive: false });
+            if (files && files[0] && files[0].type === 'application/pdf') {
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    loadPdfData(new Uint8Array(ev.target.result));
+                };
+                reader.readAsArrayBuffer(files[0]);
+            } else {
+                alert("Vui lòng chỉ thả file PDF.");
+            }
+        });
 
-        function updateTransform() { contentEl.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`; }
-        function resetView() { scale = 1; pointX = 0; pointY = 0; updateTransform(); }
-        window.onload = function() { scale = 0.9; updateTransform(); }
+        // Zoom & Nav
+        document.getElementById('zoom-in').addEventListener('click', () => { saveDrawing(pageNum); scale += 0.25; renderPage(pageNum); });
+        document.getElementById('zoom-out').addEventListener('click', () => { if (scale <= 0.5) return; saveDrawing(pageNum); scale -= 0.25; renderPage(pageNum); });
+        document.getElementById('prev-page').addEventListener('click', onPrevPage);
+        document.getElementById('next-page').addEventListener('click', onNextPage);
+
+        // --- 2. Xử lý Vẽ (Giữ nguyên logic) ---
+        function getMousePos(canvas, evt) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+            const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+            return {
+                x: (clientX - rect.left) * (canvas.width / rect.width),
+                y: (clientY - rect.top) * (canvas.height / rect.height)
+            };
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            const pos = getMousePos(drawCanvas, e);
+            lastX = pos.x; lastY = pos.y;
+            draw(e); 
+        }
+
+        function stopDrawing() { isDrawing = false; drawCtx.beginPath(); }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            if(e.type === 'touchmove') e.preventDefault();
+            const pos = getMousePos(drawCanvas, e);
+
+            drawCtx.lineWidth = penSizeInput.value;
+            drawCtx.lineCap = 'round';
+            drawCtx.lineJoin = 'round';
+
+            if (currentTool === 'eraser') {
+                drawCtx.globalCompositeOperation = 'destination-out';
+                drawCtx.lineWidth = penSizeInput.value * 5; 
+            } else {
+                drawCtx.globalCompositeOperation = 'source-over';
+                drawCtx.strokeStyle = colorPicker.value;
+            }
+
+            drawCtx.beginPath();
+            drawCtx.moveTo(lastX, lastY);
+            drawCtx.lineTo(pos.x, pos.y);
+            drawCtx.stroke();
+            lastX = pos.x; lastY = pos.y;
+        }
+
+        drawCanvas.addEventListener('mousedown', startDrawing);
+        drawCanvas.addEventListener('mousemove', draw);
+        drawCanvas.addEventListener('mouseup', stopDrawing);
+        drawCanvas.addEventListener('mouseout', stopDrawing);
+        drawCanvas.addEventListener('touchstart', startDrawing, { passive: false });
+        drawCanvas.addEventListener('touchmove', draw, { passive: false });
+        drawCanvas.addEventListener('touchend', stopDrawing);
+
+        // Tool Switching
+        document.getElementById('tool-pen').addEventListener('click', function() {
+            currentTool = 'pen';
+            this.classList.add('active');
+            document.getElementById('tool-eraser').classList.remove('active');
+        });
+        document.getElementById('tool-eraser').addEventListener('click', function() {
+            currentTool = 'eraser';
+            this.classList.add('active');
+            document.getElementById('tool-pen').classList.remove('active');
+        });
+        document.getElementById('btn-clear').addEventListener('click', () => {
+            if(confirm('Bạn có chắc muốn xóa hết nét vẽ trên trang này?')) {
+                drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+            }
+        });
+
+        function saveDrawing(pageNumToSave) {
+            if (drawCanvas.width > 0 && drawCanvas.height > 0) storedDrawings[pageNumToSave] = drawCanvas.toDataURL(); 
+        }
+
+        function restoreDrawing(pageNumToRestore) {
+            drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+            if (storedDrawings[pageNumToRestore]) {
+                const img = new Image();
+                img.onload = function() {
+                    drawCtx.globalCompositeOperation = 'source-over';
+                    drawCtx.drawImage(img, 0, 0, drawCanvas.width, drawCanvas.height);
+                };
+                img.src = storedDrawings[pageNumToRestore];
+            }
+        }
+
+        // --- 4. Tải xuống ---
+        document.getElementById('btn-download').addEventListener('click', () => {
+            if (!pdfDoc) { alert('Vui lòng mở file PDF trước.'); return; }
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = pdfCanvas.width;
+            tempCanvas.height = pdfCanvas.height;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.fillStyle = '#FFFFFF';
+            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+            tempCtx.drawImage(pdfCanvas, 0, 0);
+            tempCtx.drawImage(drawCanvas, 0, 0);
+            const link = document.createElement('a');
+            link.download = `pdf-trang-${pageNum}.png`;
+            link.href = tempCanvas.toDataURL('image/png');
+            link.click();
+        });
     </script>
 </body>
 </html>
