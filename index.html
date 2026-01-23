@@ -2,466 +2,310 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bảng Viết PDF Online</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Học Hóa Thú Vị - Tinh Dầu & Xà Phòng</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome cho icon -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- PDF.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600;700&display=swap');
+        
         body {
-            overscroll-behavior: none; /* Ngăn chặn pull-to-refresh trên mobile */
-            touch-action: none; /* Tối ưu cho vẽ cảm ứng */
+            font-family: 'Quicksand', sans-serif;
+            background: #f8fafc;
+            scroll-behavior: smooth;
         }
-        #canvas-container {
-            position: relative;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            margin: 0 auto;
-            border: 1px solid #e5e7eb;
-            background-color: #525659; /* Màu nền giống trình đọc PDF */
-            overflow: hidden;
+
+        .hero-gradient {
+            background: linear-gradient(135deg, #0ea5e9 0%, #22c55e 100%);
         }
-        canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            display: block;
+
+        .card-hover {
+            transition: all 0.3s ease;
         }
-        #pdf-render {
-            z-index: 1; /* Lớp PDF ở dưới */
+
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
         }
-        #draw-layer {
-            z-index: 2; /* Lớp vẽ ở trên */
-            cursor: crosshair;
-            touch-action: none;
-        }
-        .tool-btn.active {
-            background-color: #dbeafe; /* bg-blue-100 */
-            color: #1d4ed8; /* text-blue-700 */
-            border-color: #3b82f6;
-        }
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1; 
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #888; 
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #555; 
-        }
-        /* Drag and Drop overlay */
-        #drop-zone {
-            display: none;
-            background-color: rgba(37, 99, 235, 0.9);
-        }
-        #drop-zone.dragover {
+
+        .step-number {
+            width: 35px;
+            height: 35px;
+            background: #0ea5e9;
+            color: white;
+            border-radius: 50%;
             display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 15px;
+            flex-shrink: 0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 8px;
         }
     </style>
 </head>
-<body class="bg-gray-100 h-screen flex flex-col font-sans relative">
+<body class="text-slate-800">
 
-    <!-- Drag & Drop Overlay -->
-    <div id="drop-zone" class="absolute inset-0 z-50 flex flex-col items-center justify-center text-white transition-opacity duration-200">
-        <i class="fa-solid fa-cloud-arrow-up text-6xl mb-4"></i>
-        <h2 class="text-3xl font-bold">Thả file PDF vào đây</h2>
-    </div>
+    <!-- Header -->
+    <header class="hero-gradient text-white py-16 px-4 text-center shadow-lg">
+        <h1 class="text-4xl md:text-6xl font-extrabold mb-4 drop-shadow-md">Hóa Học Kali <i class="fas fa-flask"></i></h1>
+        <p class="text-xl opacity-90 max-w-2xl mx-auto">Cẩm nang thực hành chi tiết: Định lượng chính xác - Quy trình chuẩn - Kết quả tối ưu</p>
+    </header>
 
-    <!-- Header / Toolbar -->
-    <header class="bg-white border-b border-gray-200 p-2 shadow-sm flex flex-wrap items-center justify-between gap-2 z-10 shrink-0">
-        <!-- Khu vực file và điều hướng -->
-        <div class="flex items-center gap-2">
-            <div class="flex gap-1">
-                <label class="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 cursor-pointer transition text-sm" title="Mở file từ máy">
-                    <i class="fa-solid fa-folder-open"></i>
-                    <span class="hidden sm:inline">Mở File</span>
-                    <input type="file" id="file-upload" accept="application/pdf" class="hidden" />
-                </label>
-                <button id="btn-url" class="flex items-center gap-2 px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 cursor-pointer transition text-sm" title="Nhập Link PDF/Drive">
-                    <i class="fa-solid fa-link"></i>
-                    <span class="hidden sm:inline">URL</span>
-                </button>
-            </div>
+    <!-- Navigation Tabs -->
+    <nav class="flex justify-center bg-white shadow-md sticky top-0 z-10">
+        <button onclick="openTab(event, 'tinhdau')" class="tab-btn px-8 py-5 font-bold border-b-4 border-blue-500 text-blue-600 transition-all flex items-center">
+            <i class="fas fa-leaf mr-2 text-xl"></i> Tinh Dầu
+        </button>
+        <button onclick="openTab(event, 'xaphong')" class="tab-btn px-8 py-5 font-bold border-b-4 border-transparent hover:text-green-600 transition-all flex items-center">
+            <i class="fas fa-bubbles mr-2 text-xl"></i> Xà Phòng
+        </button>
+    </nav>
 
-            <div class="flex items-center bg-gray-100 rounded p-1">
-                <button id="prev-page" class="p-2 hover:bg-gray-200 rounded disabled:opacity-50" title="Trang trước">
-                    <i class="fa-solid fa-chevron-left"></i>
-                </button>
-                <span class="mx-2 text-sm font-medium">
-                    <span id="page-num">0</span> / <span id="page-count">0</span>
-                </span>
-                <button id="next-page" class="p-2 hover:bg-gray-200 rounded disabled:opacity-50" title="Trang sau">
-                    <i class="fa-solid fa-chevron-right"></i>
-                </button>
-            </div>
-            
-            <div class="flex items-center gap-1 ml-2">
-                <button id="zoom-out" class="p-2 hover:bg-gray-200 rounded" title="Thu nhỏ">
-                    <i class="fa-solid fa-minus"></i>
-                </button>
-                <span id="zoom-level" class="text-sm w-12 text-center">100%</span>
-                <button id="zoom-in" class="p-2 hover:bg-gray-200 rounded" title="Phóng to">
-                    <i class="fa-solid fa-plus"></i>
-                </button>
-            </div>
-        </div>
-
-        <!-- Công cụ vẽ -->
-        <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
-            <div class="flex bg-gray-100 rounded p-1 gap-1">
-                <button id="tool-pen" class="tool-btn active p-2 rounded border border-transparent hover:bg-white transition" title="Bút vẽ">
-                    <i class="fa-solid fa-pen"></i>
-                </button>
-                <button id="tool-eraser" class="tool-btn p-2 rounded border border-transparent hover:bg-white transition" title="Tẩy">
-                    <i class="fa-solid fa-eraser"></i>
-                </button>
-                <button id="btn-clear" class="p-2 rounded border border-transparent hover:bg-red-100 text-red-600 transition" title="Xóa hết trang này">
-                    <i class="fa-solid fa-trash-can"></i>
-                </button>
-            </div>
-
-            <div class="flex items-center gap-2 border-l pl-2 border-gray-300">
-                <input type="color" id="color-picker" value="#000000" class="w-8 h-8 rounded cursor-pointer border-0 bg-transparent p-0" title="Màu bút">
-                <div class="flex flex-col w-24">
-                    <label class="text-[10px] text-gray-500">Kích thước</label>
-                    <input type="range" id="pen-size" min="1" max="20" value="2" class="h-1 bg-gray-300 rounded-lg appearance-none cursor-pointer">
+    <main class="max-w-6xl mx-auto p-6">
+        
+        <!-- SECTION 1: TINH DẦU -->
+        <section id="tinhdau" class="tab-content active">
+            <!-- Recipe Header -->
+            <div class="bg-blue-600 text-white p-8 rounded-3xl mb-8 shadow-xl flex items-center gap-6">
+                <div class="hidden md:block text-5xl bg-blue-500 p-6 rounded-2xl">
+                    <i class="fas fa-mortar-pestle"></i>
+                </div>
+                <div>
+                    <h2 class="text-3xl font-bold mb-2">Công Thức Tách Tinh Dầu Sả - Chanh</h2>
+                    <p class="opacity-80">Phương pháp chưng cất lôi cuốn hơi nước tại nhà</p>
                 </div>
             </div>
 
-            <div class="border-l pl-2 border-gray-300">
-                <button id="btn-download" class="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm transition" title="Lưu trang hiện tại thành ảnh">
-                    <i class="fa-solid fa-download"></i>
-                    <span class="hidden md:inline">Lưu Ảnh</span>
-                </button>
-            </div>
-        </div>
-    </header>
+            <div class="grid md:grid-cols-3 gap-8 mb-8">
+                <!-- Ingredients -->
+                <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 card-hover md:col-span-1">
+                    <h3 class="text-xl font-bold mb-6 text-blue-600 border-b pb-2"><i class="fas fa-shopping-basket mr-2"></i>Nguyên liệu</h3>
+                    <ul class="space-y-4">
+                        <li class="flex justify-between items-center">
+                            <span>Sả tươi (đã rửa)</span>
+                            <span class="font-bold text-blue-700">1 kg</span>
+                        </li>
+                        <li class="flex justify-between items-center border-t pt-2">
+                            <span>Chanh (lấy vỏ)</span>
+                            <span class="font-bold text-blue-700">5 trái</span>
+                        </li>
+                        <li class="flex justify-between items-center border-t pt-2">
+                            <span>Đá lạnh</span>
+                            <span class="font-bold text-blue-700">Dùng liên tục</span>
+                        </li>
+                        <li class="flex justify-between items-center border-t pt-2">
+                            <span>Nước sạch</span>
+                            <span class="font-bold text-blue-700">Vừa đủ ngập</span>
+                        </li>
+                    </ul>
+                    <div class="mt-8 p-4 bg-yellow-50 rounded-2xl border border-yellow-100">
+                        <p class="text-sm text-yellow-800 font-semibold"><i class="fas fa-exclamation-triangle mr-1"></i> Lưu ý:</p>
+                        <p class="text-xs text-yellow-700 mt-1">Sả cần được đập dập để phá vỡ các mô chứa tinh dầu trước khi nấu.</p>
+                    </div>
+                </div>
 
-    <!-- Main Canvas Area -->
-    <main class="flex-1 overflow-auto bg-gray-200 flex justify-center p-4" id="main-scroll">
-        <div id="canvas-container" class="relative bg-white shadow-lg">
-            <canvas id="pdf-render"></canvas>
-            <canvas id="draw-layer"></canvas>
-        </div>
-        
-        <!-- Empty State -->
-        <div id="empty-state" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center text-gray-500">
-            <i class="fa-solid fa-file-pdf text-6xl mb-4 text-gray-300"></i>
-            <p class="text-xl font-medium">Kéo thả file PDF vào đây</p>
-            <p class="text-sm mt-2">hoặc chọn từ nút "Mở File" / "URL"</p>
-        </div>
+                <!-- Procedure -->
+                <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 card-hover md:col-span-2">
+                    <h3 class="text-xl font-bold mb-6 text-blue-600 border-b pb-2"><i class="fas fa-clock mr-2"></i>Quy trình & Thời gian</h3>
+                    <div class="space-y-6">
+                        <div class="flex">
+                            <div class="step-number">1</div>
+                            <div>
+                                <h4 class="font-bold">Chuẩn bị & Lắp đặt</h4>
+                                <p class="text-slate-600">Cắt nhỏ vỏ chanh thành sợi. Đặt bát chịu nhiệt vào <strong>giữa nồi</strong>. Cho sả và chanh xung quanh. Đổ nước ngập vỏ nhưng <strong>tuyệt đối không tràn vào bát</strong>.</p>
+                            </div>
+                        </div>
+                        <div class="flex">
+                            <div class="step-number">2</div>
+                            <div>
+                                <h4 class="font-bold">Đun lửa & Ngưng tụ</h4>
+                                <p class="text-slate-600">Úp ngược nắp nồi. Đun lửa vừa cho đến khi sôi, sau đó hạ nhỏ lửa.</p>
+                                <div class="mt-2 inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-bold">
+                                    <i class="far fa-clock mr-2"></i> Thời gian: 2 - 3 tiếng
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex">
+                            <div class="step-number">3</div>
+                            <div>
+                                <h4 class="font-bold">Làm lạnh liên tục</h4>
+                                <p class="text-slate-600">Cho đá lạnh lên trên nắp nồi. Khi đá tan hết, phải <strong>thay đá mới ngay lập tức</strong> để hơi tinh dầu không bị thoát ra ngoài.</p>
+                            </div>
+                        </div>
+                        <div class="flex">
+                            <div class="step-number">4</div>
+                            <div>
+                                <h4 class="font-bold">Thu hồi tinh dầu</h4>
+                                <p class="text-slate-600">Sau khi kết thúc, để nguội hoàn toàn. Tinh dầu sẽ nổi lên trên mặt nước trong bát. Sử dụng <strong>xi-lanh</strong> để hút lấy phần tinh dầu tinh khiết nhất.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: XÀ PHÒNG -->
+        <section id="xaphong" class="tab-content">
+            <div class="bg-green-600 text-white p-8 rounded-3xl mb-8 shadow-xl flex items-center gap-6">
+                <div class="hidden md:block text-5xl bg-green-500 p-6 rounded-2xl">
+                    <i class="fas fa-soap"></i>
+                </div>
+                <div>
+                    <h2 class="text-3xl font-bold mb-2">Thực Hành Điều Chế Xà Phòng</h2>
+                    <p class="opacity-80">Phản ứng xà phòng hóa giữa chất béo và kiềm</p>
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8 mb-8">
+                <!-- Formulation -->
+                <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 card-hover">
+                    <h3 class="text-xl font-bold mb-6 text-green-700 border-b pb-2"><i class="fas fa-list-ol mr-2"></i>Tỉ lệ nguyên liệu chuẩn</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="p-4 bg-slate-50 rounded-2xl">
+                            <span class="text-xs text-slate-500 uppercase font-bold">Chất béo</span>
+                            <p class="text-lg font-bold">100g</p>
+                            <p class="text-xs text-slate-400">Dầu ăn mới hoặc cũ</p>
+                        </div>
+                        <div class="p-4 bg-green-50 rounded-2xl border border-green-100">
+                            <span class="text-xs text-green-600 uppercase font-bold">Dung dịch Kiềm</span>
+                            <p class="text-lg font-bold text-green-700">40 mL</p>
+                            <p class="text-xs text-green-600 font-bold">NaOH 10.625M</p>
+                        </div>
+                        <div class="p-4 bg-slate-50 rounded-2xl">
+                            <span class="text-xs text-slate-500 uppercase font-bold">Hương liệu</span>
+                            <p class="text-lg font-bold">Vừa đủ</p>
+                            <p class="text-xs text-slate-400">Tinh dầu sả, chanh, quế...</p>
+                        </div>
+                        <div class="p-4 bg-slate-50 rounded-2xl">
+                            <span class="text-xs text-slate-500 uppercase font-bold">Phụ gia</span>
+                            <p class="text-lg font-bold">Tùy chọn</p>
+                            <p class="text-xs text-slate-400">Chất tạo màu thực phẩm</p>
+                        </div>
+                    </div>
+                    <div class="mt-6 p-4 bg-red-50 rounded-2xl border border-red-100 text-red-700">
+                        <p class="text-sm font-bold"><i class="fas fa-shield-alt mr-2"></i>An toàn hóa chất:</p>
+                        <p class="text-xs mt-1">NaOH 10.625M là nồng độ rất cao, có tính ăn mòn mạnh. Tuyệt đối đeo găng tay khi thao tác.</p>
+                    </div>
+                </div>
+
+                <!-- Step by Step -->
+                <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 card-hover">
+                    <h3 class="text-xl font-bold mb-6 text-green-700 border-b pb-2"><i class="fas fa-vial mr-2"></i>Các bước thực hiện</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-start">
+                            <div class="step-number" style="background:#22c55e">1</div>
+                            <p class="text-slate-600">Cho dung dịch <strong>NaOH 10.625M</strong> vào dầu thực vật theo đúng tỉ lệ.</p>
+                        </div>
+                        <div class="flex items-start">
+                            <div class="step-number" style="background:#22c55e">2</div>
+                            <div>
+                                <p class="text-slate-600 font-bold">Khuấy hỗn hợp liên tục</p>
+                                <div class="mt-1 inline-flex items-center px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-bold">
+                                    <i class="far fa-clock mr-2"></i> Thời gian: 1 Giờ
+                                </div>
+                                <p class="text-xs text-slate-500 mt-1">Khuấy đều tay để phản ứng xà phòng hóa xảy ra triệt để.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <div class="step-number" style="background:#22c55e">3</div>
+                            <p class="text-slate-600">Khi hỗn hợp sệt lại, thêm <strong>tinh dầu</strong> và <strong>chất tạo màu</strong> vào khuấy đều lần cuối.</p>
+                        </div>
+                        <div class="flex items-start">
+                            <div class="step-number" style="background:#22c55e">4</div>
+                            <div>
+                                <p class="text-slate-600 font-bold">Ép khuôn & Chờ đợi</p>
+                                <div class="mt-1 inline-flex items-center px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-bold">
+                                    <i class="far fa-calendar-alt mr-2"></i> Thời gian: 2 Ngày
+                                </div>
+                                <p class="text-xs text-slate-500 mt-1">Để xà phòng khô tự nhiên và ổn định cấu trúc trong khuôn.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quality Check -->
+            <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+                <h3 class="text-xl font-bold mb-6 text-green-700 text-center">Kiểm tra chất lượng thành phẩm</h3>
+                <div class="grid md:grid-cols-4 gap-4">
+                    <div class="text-center p-4">
+                        <div class="text-3xl text-green-500 mb-2"><i class="fas fa-fingerprint"></i></div>
+                        <h4 class="font-bold">Kết cấu</h4>
+                        <p class="text-xs text-slate-500">Chắc, mịn, không nứt</p>
+                    </div>
+                    <div class="text-center p-4">
+                        <div class="text-3xl text-green-500 mb-2"><i class="fas fa-palette"></i></div>
+                        <h4 class="font-bold">Màu sắc</h4>
+                        <p class="text-xs text-slate-500">Tươi sáng, đồng nhất</p>
+                    </div>
+                    <div class="text-center p-4">
+                        <div class="text-3xl text-green-500 mb-2"><i class="fas fa-wind"></i></div>
+                        <h4 class="font-bold">Mùi hương</h4>
+                        <p class="text-xs text-slate-500">Thơm, không mùi dầu cũ</p>
+                    </div>
+                    <div class="text-center p-4">
+                        <div class="text-3xl text-green-500 mb-2"><i class="fas fa-vial"></i></div>
+                        <h4 class="font-bold">Độ pH</h4>
+                        <p class="text-xs text-slate-500 font-bold">Khoảng 8 - 10</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
     </main>
 
+    <footer class="text-center py-10 text-slate-500 text-sm">
+        <p>© 2024 Học Hóa Thú Vị | Tài liệu: Lý thuyết HOAKALI1.docx</p>
+        <p class="mt-1">Dành cho mục đích học tập và nghiên cứu thực hành</p>
+    </footer>
+
     <script>
-        // --- Cấu hình PDF.js ---
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
-        // --- Biến trạng thái ---
-        let pdfDoc = null;
-        let pageNum = 1;
-        let pageRendering = false;
-        let pageNumPending = null;
-        let scale = 1.0;
-        let canvasContainer = document.getElementById('canvas-container');
-        let pdfCanvas = document.getElementById('pdf-render');
-        let pdfCtx = pdfCanvas.getContext('2d');
-        let drawCanvas = document.getElementById('draw-layer');
-        let drawCtx = drawCanvas.getContext('2d', { willReadFrequently: true });
-
-        // Lưu trữ nét vẽ của từng trang: { 1: "dataURL", 2: "dataURL" }
-        let storedDrawings = {};
-        
-        // Trạng thái vẽ
-        let isDrawing = false;
-        let lastX = 0;
-        let lastY = 0;
-        let currentTool = 'pen'; // 'pen' hoặc 'eraser'
-        
-        // --- DOM Elements ---
-        const fileInput = document.getElementById('file-upload');
-        const emptyState = document.getElementById('empty-state');
-        const pageNumSpan = document.getElementById('page-num');
-        const pageCountSpan = document.getElementById('page-count');
-        const zoomLevelSpan = document.getElementById('zoom-level');
-        const colorPicker = document.getElementById('color-picker');
-        const penSizeInput = document.getElementById('pen-size');
-        
-        // --- 1. Xử lý PDF & Input ---
-
-        // Hàm chung để load dữ liệu PDF (ArrayBuffer)
-        function loadPdfData(typedarray) {
-            pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
-                pdfDoc = pdf;
-                pageCountSpan.textContent = pdfDoc.numPages;
-                pageNum = 1;
-                storedDrawings = {}; // Reset nét vẽ
-                emptyState.style.display = 'none';
-                renderPage(pageNum);
-            }).catch(err => {
-                console.error(err);
-                alert("Không thể đọc file PDF này. File có thể bị lỗi hoặc được bảo vệ.");
-            });
-        }
-
-        // Render trang
-        async function renderPage(num) {
-            pageRendering = true;
-            const page = await pdfDoc.getPage(num);
-            const viewport = page.getViewport({ scale: scale });
-            
-            pdfCanvas.height = viewport.height;
-            pdfCanvas.width = viewport.width;
-            drawCanvas.height = viewport.height;
-            drawCanvas.width = viewport.width;
-            
-            canvasContainer.style.width = `${viewport.width}px`;
-            canvasContainer.style.height = `${viewport.height}px`;
-
-            const renderContext = {
-                canvasContext: pdfCtx,
-                viewport: viewport
-            };
-            
-            try {
-                await page.render(renderContext).promise;
-                pageRendering = false;
-                restoreDrawing(num);
-
-                if (pageNumPending !== null) {
-                    renderPage(pageNumPending);
-                    pageNumPending = null;
-                }
-            } catch (error) {
-                console.error("Lỗi render trang:", error);
-                pageRendering = false;
+        function openTab(evt, tabName) {
+            var i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].classList.remove("active");
             }
-
-            pageNumSpan.textContent = num;
-            zoomLevelSpan.textContent = `${Math.round(scale * 100)}%`;
+            tablinks = document.getElementsByClassName("tab-btn");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].classList.remove("border-blue-500", "text-blue-600");
+                tablinks[i].classList.add("border-transparent");
+            }
+            document.getElementById(tabName).classList.add("active");
             
-            document.getElementById('prev-page').disabled = num <= 1;
-            document.getElementById('next-page').disabled = num >= pdfDoc.numPages;
-        }
-
-        function queueRenderPage(num) {
-            saveDrawing(pageNum);
-            if (pageRendering) {
-                pageNumPending = num;
+            // Highlight the active tab button
+            if (tabName === 'tinhdau') {
+                evt.currentTarget.classList.add("border-blue-500", "text-blue-600");
             } else {
-                renderPage(num);
+                evt.currentTarget.classList.add("border-green-600", "text-green-600");
             }
+            evt.currentTarget.classList.remove("border-transparent");
         }
-
-        function onPrevPage() { if (pageNum <= 1) return; queueRenderPage(--pageNum); }
-        function onNextPage() { if (pageNum >= pdfDoc.numPages) return; queueRenderPage(++pageNum); }
-
-        // --- Xử lý File Input ---
-        fileInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file && file.type === 'application/pdf') {
-                const reader = new FileReader();
-                reader.onload = function(ev) {
-                    loadPdfData(new Uint8Array(ev.target.result));
-                };
-                reader.readAsArrayBuffer(file);
-            }
-        });
-
-        // --- Xử lý URL (Đã cập nhật Proxy cho Github Pages) ---
-        document.getElementById('btn-url').addEventListener('click', async () => {
-            let url = prompt("Nhập đường dẫn file PDF (Direct Link) hoặc Google Drive Public Link:");
-            if (!url) return;
-
-            // Xử lý Google Drive Link
-            const driveRegex = /drive\.google\.com\/file\/d\/([-_\w]+)/;
-            const match = url.match(driveRegex);
-            if (match && match[1]) {
-                url = `https://drive.google.com/uc?export=download&id=${match[1]}`;
-            }
-
-            const btn = document.getElementById('btn-url');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading...';
-
-            try {
-                // Thử tải trực tiếp trước
-                let response;
-                try {
-                    response = await fetch(url);
-                    if (!response.ok) throw new Error("Direct fetch failed");
-                } catch (e) {
-                    console.warn("Tải trực tiếp thất bại, đang thử qua Proxy...", e);
-                    // Nếu lỗi (thường do CORS), thử qua proxy
-                    // Sử dụng dịch vụ corsproxy.io miễn phí
-                    const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
-                    response = await fetch(proxyUrl);
-                }
-
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                
-                const arrayBuffer = await response.arrayBuffer();
-                loadPdfData(new Uint8Array(arrayBuffer));
-                
-            } catch (error) {
-                console.error(error);
-                alert("LỖI: Không thể tải file. \nNếu bạn đang dùng link Google Drive, hãy chắc chắn file đã được chia sẻ công khai (Everyone with the link).");
-            } finally {
-                btn.innerHTML = originalText;
-            }
-        });
-
-        // --- Xử lý Drag & Drop ---
-        const dropZone = document.getElementById('drop-zone');
-        
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            document.body.addEventListener(eventName, preventDefaults, false);
-        });
-
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-
-        document.body.addEventListener('dragenter', () => dropZone.classList.add('dragover'));
-        document.body.addEventListener('dragleave', (e) => {
-            // Chỉ ẩn khi rời khỏi hoàn toàn cửa sổ
-            if (e.clientX === 0 && e.clientY === 0) {
-                dropZone.classList.remove('dragover');
-            }
-        });
-        
-        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-
-        document.body.addEventListener('drop', (e) => {
-            dropZone.classList.remove('dragover');
-            const dt = e.dataTransfer;
-            const files = dt.files;
-
-            if (files && files[0] && files[0].type === 'application/pdf') {
-                const reader = new FileReader();
-                reader.onload = function(ev) {
-                    loadPdfData(new Uint8Array(ev.target.result));
-                };
-                reader.readAsArrayBuffer(files[0]);
-            } else {
-                alert("Vui lòng chỉ thả file PDF.");
-            }
-        });
-
-        // Zoom & Nav
-        document.getElementById('zoom-in').addEventListener('click', () => { saveDrawing(pageNum); scale += 0.25; renderPage(pageNum); });
-        document.getElementById('zoom-out').addEventListener('click', () => { if (scale <= 0.5) return; saveDrawing(pageNum); scale -= 0.25; renderPage(pageNum); });
-        document.getElementById('prev-page').addEventListener('click', onPrevPage);
-        document.getElementById('next-page').addEventListener('click', onNextPage);
-
-        // --- 2. Xử lý Vẽ (Giữ nguyên logic) ---
-        function getMousePos(canvas, evt) {
-            const rect = canvas.getBoundingClientRect();
-            const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
-            const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
-            return {
-                x: (clientX - rect.left) * (canvas.width / rect.width),
-                y: (clientY - rect.top) * (canvas.height / rect.height)
-            };
-        }
-
-        function startDrawing(e) {
-            isDrawing = true;
-            const pos = getMousePos(drawCanvas, e);
-            lastX = pos.x; lastY = pos.y;
-            draw(e); 
-        }
-
-        function stopDrawing() { isDrawing = false; drawCtx.beginPath(); }
-
-        function draw(e) {
-            if (!isDrawing) return;
-            if(e.type === 'touchmove') e.preventDefault();
-            const pos = getMousePos(drawCanvas, e);
-
-            drawCtx.lineWidth = penSizeInput.value;
-            drawCtx.lineCap = 'round';
-            drawCtx.lineJoin = 'round';
-
-            if (currentTool === 'eraser') {
-                drawCtx.globalCompositeOperation = 'destination-out';
-                drawCtx.lineWidth = penSizeInput.value * 5; 
-            } else {
-                drawCtx.globalCompositeOperation = 'source-over';
-                drawCtx.strokeStyle = colorPicker.value;
-            }
-
-            drawCtx.beginPath();
-            drawCtx.moveTo(lastX, lastY);
-            drawCtx.lineTo(pos.x, pos.y);
-            drawCtx.stroke();
-            lastX = pos.x; lastY = pos.y;
-        }
-
-        drawCanvas.addEventListener('mousedown', startDrawing);
-        drawCanvas.addEventListener('mousemove', draw);
-        drawCanvas.addEventListener('mouseup', stopDrawing);
-        drawCanvas.addEventListener('mouseout', stopDrawing);
-        drawCanvas.addEventListener('touchstart', startDrawing, { passive: false });
-        drawCanvas.addEventListener('touchmove', draw, { passive: false });
-        drawCanvas.addEventListener('touchend', stopDrawing);
-
-        // Tool Switching
-        document.getElementById('tool-pen').addEventListener('click', function() {
-            currentTool = 'pen';
-            this.classList.add('active');
-            document.getElementById('tool-eraser').classList.remove('active');
-        });
-        document.getElementById('tool-eraser').addEventListener('click', function() {
-            currentTool = 'eraser';
-            this.classList.add('active');
-            document.getElementById('tool-pen').classList.remove('active');
-        });
-        document.getElementById('btn-clear').addEventListener('click', () => {
-            if(confirm('Bạn có chắc muốn xóa hết nét vẽ trên trang này?')) {
-                drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
-            }
-        });
-
-        function saveDrawing(pageNumToSave) {
-            if (drawCanvas.width > 0 && drawCanvas.height > 0) storedDrawings[pageNumToSave] = drawCanvas.toDataURL(); 
-        }
-
-        function restoreDrawing(pageNumToRestore) {
-            drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
-            if (storedDrawings[pageNumToRestore]) {
-                const img = new Image();
-                img.onload = function() {
-                    drawCtx.globalCompositeOperation = 'source-over';
-                    drawCtx.drawImage(img, 0, 0, drawCanvas.width, drawCanvas.height);
-                };
-                img.src = storedDrawings[pageNumToRestore];
-            }
-        }
-
-        // --- 4. Tải xuống ---
-        document.getElementById('btn-download').addEventListener('click', () => {
-            if (!pdfDoc) { alert('Vui lòng mở file PDF trước.'); return; }
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = pdfCanvas.width;
-            tempCanvas.height = pdfCanvas.height;
-            const tempCtx = tempCanvas.getContext('2d');
-            tempCtx.fillStyle = '#FFFFFF';
-            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-            tempCtx.drawImage(pdfCanvas, 0, 0);
-            tempCtx.drawImage(drawCanvas, 0, 0);
-            const link = document.createElement('a');
-            link.download = `pdf-trang-${pageNum}.png`;
-            link.href = tempCanvas.toDataURL('image/png');
-            link.click();
-        });
     </script>
 </body>
 </html>
